@@ -17,7 +17,7 @@ public class Job {
 	private volatile JobPhase phase;
 	private volatile String result;
 	private volatile String errorMessage;
-	private volatile List<String> pages = List.of();
+	private volatile List<PageText> pages = List.of();
 
 	public Job(String id, String originalFilename, Instant submittedAt, byte[] content) {
 		this.id = id;
@@ -74,11 +74,11 @@ public class Job {
 		this.errorMessage = errorMessage;
 	}
 
-	public List<String> getPages() {
+	public List<PageText> getPages() {
 		return pages;
 	}
 
-	public void setPages(List<String> pages) {
+	public void setPages(List<PageText> pages) {
 		this.pages = List.copyOf(pages);
 	}
 }

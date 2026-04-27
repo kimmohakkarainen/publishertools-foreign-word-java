@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -51,6 +52,19 @@ class JobServiceWorkerTest {
 	}
 
 	@Test
+	void submitPagesDirectlyEnqueuesToPhaseTwoAndFinishes() throws Exception {
+		String id = jobService.submitPages(List.of(
+				new PageText(1, "first page text"),
+				new PageText(2, "second page text")));
+		assertThat(id).isNotBlank();
+
+		Job finished = awaitFinishedJob(id);
+		assertThat(finished.getPhase()).isEqualTo(JobPhase.COMPLETED);
+		assertThat(finished.getPages()).hasSize(2);
+		assertThat(finished.getResult()).contains("Processed 2 pages");
+	}
+
+	@Test
 	void splitterEndsPageAtFirstPunctuationAfterHundredWords() throws Exception {
 		String firstHundredWords = IntStream.rangeClosed(1, 100)
 				.mapToObj(i -> "w" + i)
@@ -60,8 +74,8 @@ class JobServiceWorkerTest {
 
 		Job finished = awaitFinishedJob(jobService.submit(file));
 		assertThat(finished.getPages()).hasSize(2);
-		assertThat(finished.getPages().get(0)).endsWith("stop!");
-		assertThat(finished.getPages().get(1)).isEqualTo(" after split");
+		assertThat(finished.getPages().get(0).text()).endsWith("stop!");
+		assertThat(finished.getPages().get(1).text()).isEqualTo(" after split");
 	}
 
 	@Test
@@ -77,7 +91,7 @@ class JobServiceWorkerTest {
 
 		Job finished = awaitFinishedJob(jobService.submit(file));
 		assertThat(finished.getPages()).hasSize(1);
-		assertThat(finished.getPages().get(0)).endsWith("finally.");
+		assertThat(finished.getPages().get(0).text()).endsWith("finally.");
 	}
 
 	@Test
@@ -89,7 +103,7 @@ class JobServiceWorkerTest {
 
 		Job finished = awaitFinishedJob(jobService.submit(file));
 		assertThat(finished.getPages()).hasSize(1);
-		assertThat(finished.getPages().get(0)).endsWith("w130");
+		assertThat(finished.getPages().get(0).text()).endsWith("w130");
 	}
 
 	@Test

@@ -2,6 +2,7 @@ package fi.publishertools.foreign.jobs;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,6 +47,23 @@ public class JobService {
 		job.setPhase(JobPhase.QUEUED_FOR_SPLITTING);
 		jobs.put(id, job);
 		phaseOneJobIds.offer(id);
+		return id;
+	}
+
+	public String submitPages(List<PageText> pages) {
+		if (pages == null || pages.isEmpty()) {
+			throw new IllegalArgumentException("Pages are required and must not be empty");
+		}
+		if (pages.stream().anyMatch(page -> page == null || page.text() == null || page.page() <= 0)) {
+			throw new IllegalArgumentException("Pages must include positive page and non-null text");
+		}
+		String id = UUID.randomUUID().toString();
+		Job job = new Job(id, "words4-submit", Instant.now(), new byte[0]);
+		job.setStatus(JobStatus.IN_PROGRESS);
+		job.setPhase(JobPhase.QUEUED_FOR_PROCESSING);
+		job.setPages(pages);
+		jobs.put(id, job);
+		phaseTwoJobIds.offer(id);
 		return id;
 	}
 

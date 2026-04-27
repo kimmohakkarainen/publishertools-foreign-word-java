@@ -2,6 +2,7 @@ package fi.publishertools.foreign.jobs;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -60,7 +61,7 @@ public class JobWorker {
 				}
 				try {
 					job.setPhase(JobPhase.SPLITTING);
-					List<String> pages = splitIntoPages(job);
+					List<PageText> pages = splitIntoPages(job);
 					job.setPages(pages);
 					job.setPhase(JobPhase.QUEUED_FOR_PROCESSING);
 					jobService.phaseTwoJobIds.put(id);
@@ -105,9 +106,9 @@ public class JobWorker {
 		job.setPhase(JobPhase.FAILED);
 	}
 
-	List<String> splitIntoPages(Job job) {
+	List<PageText> splitIntoPages(Job job) {
 		String text = new String(job.getContent(), StandardCharsets.UTF_8);
-		List<String> pages = new ArrayList<>();
+		List<PageText> pages = new ArrayList<>();
 		if (text.isEmpty()) {
 			return pages;
 		}
@@ -134,7 +135,7 @@ public class JobWorker {
 
 			page.append(ch);
 			if (waitForPunctuation && isPunctuation(ch)) {
-				pages.add(page.toString());
+				pages.add(new PageText(pages.size() + 1, page.toString()));
 				page.setLength(0);
 				wordsInPage = 0;
 				waitForPunctuation = false;
@@ -143,17 +144,19 @@ public class JobWorker {
 		}
 
 		if (page.length() > 0) {
-			pages.add(page.toString());
+			pages.add(new PageText(pages.size() + 1, page.toString()));
 		}
 		return pages;
 	}
 
 	String process(Job job) {
-		List<String> pages = job.getPages();
+		List<PageText> pages = job.getPages().stream()
+				.sorted(Comparator.comparingInt(PageText::page))
+				.toList();
 		int pageCount = pages.size();
-		int totalWords = pages.stream().mapToInt(this::countWords).sum();
+		int totalWords = pages.stream().map(PageText::text).mapToInt(this::countWords).sum();
 		String preview = pageCount > 0
-				? pages.get(0).substring(0, Math.min(120, pages.get(0).length())).replaceAll("\\R", " ")
+				? pages.get(0).text().substring(0, Math.min(120, pages.get(0).text().length())).replaceAll("\\R", " ")
 				: "";
 		return "Processed " + pageCount + " pages and " + totalWords + " words from "
 				+ job.getOriginalFilename() + ". First page preview: " + preview;

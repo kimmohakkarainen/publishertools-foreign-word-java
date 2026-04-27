@@ -1,4 +1,4 @@
-# foreign-word-chat
+# foreign-word-java
 
 Small Spring Boot 4 / Java 21 REST service for chat completions using either **Ollama** (local) or **Microsoft Foundry** (Azure OpenAI via the official OpenAI Java SDK and Spring AI `openai-sdk` integration).
 
@@ -68,19 +68,6 @@ Optional: override chat model hint with `OPENAI_CHAT_MODEL`.
 
 ## API
 
-- `POST /api/v1/chat/completions` — JSON body:
-  - Either `message` (single user turn) or `messages` (list of `{ "role": "system"|"user"|"assistant", "content": "..." }`)
-  - Optional `system` (prepended as a system message when using `message`)
-  - Optional `temperature`, `maxTokens`
-
-Example:
-
-```bash
-curl -s -X POST http://localhost:8080/api/v1/chat/completions ^
-  -H "Content-Type: application/json" ^
-  -d "{\"message\":\"What is Spring Boot?\"}"
-```
-
 ### Async file processing (in-memory queue)
 
 Uploads a text file; a background worker thread processes jobs (placeholder: line count and preview). State is **not** persisted across restarts.
@@ -92,14 +79,14 @@ Uploads a text file; a background worker thread processes jobs (placeholder: lin
 Example (Windows):
 
 ```powershell
-curl -s -X POST http://localhost:8080/api/v1/jobs -F "file=@C:\path\sample.txt;type=text/plain"
-curl -s http://localhost:8080/api/v1/jobs/<jobId>/status
-curl -s http://localhost:8080/api/v1/jobs/<jobId>/result
+curl -s -X POST http://localhost:8888/api/v1/jobs -F "file=@C:\path\sample.txt;type=text/plain"
+curl -s http://localhost:8888/api/v1/jobs/<jobId>/status
+curl -s http://localhost:8888/api/v1/jobs/<jobId>/result
 ```
 
-- OpenAPI: `http://localhost:8080/v3/api-docs`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-- Health: `http://localhost:8080/actuator/health`
+- OpenAPI: `http://localhost:8888/v3/api-docs`
+- Swagger UI: `http://localhost:8888/swagger-ui.html`
+- Health: `http://localhost:8888/actuator/health`
 
 ## Configuration notes
 

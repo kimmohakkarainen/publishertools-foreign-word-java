@@ -3,8 +3,11 @@ package fi.publishertools.foreign.jobs;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,22 +39,93 @@ class JobServiceWorkerTest {
 	}
 
 	@Test
-	void submitEventuallyFinishesWithLineCount() throws Exception {
+	void submitEventuallyFinishesAfterTwoPhases() throws Exception {
 		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", "a\nb\nc".getBytes());
 		String id = jobService.submit(file);
 		assertThat(id).isNotBlank();
 
+		Job finished = awaitFinishedJob(id);
+		assertThat(finished.getPhase()).isEqualTo(JobPhase.COMPLETED);
+		assertThat(finished.getResult()).contains("Processed 1 pages");
+		assertThat(finished.getPages()).hasSize(1);
+	}
+
+	@Test
+	void splitterEndsPageAtFirstPunctuationAfterHundredWords() throws Exception {
+		String firstHundredWords = IntStream.rangeClosed(1, 100)
+				.mapToObj(i -> "w" + i)
+				.collect(Collectors.joining(" "));
+		String content = firstHundredWords + " tail words continue until stop! after split";
+		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", content.getBytes());
+
+		Job finished = awaitFinishedJob(jobService.submit(file));
+		assertThat(finished.getPages()).hasSize(2);
+		assertThat(finished.getPages().get(0)).endsWith("stop!");
+		assertThat(finished.getPages().get(1)).isEqualTo(" after split");
+	}
+
+	@Test
+	void splitterStrictlyWaitsForDelayedPunctuation() throws Exception {
+		String firstHundredWords = IntStream.rangeClosed(1, 100)
+				.mapToObj(i -> "w" + i)
+				.collect(Collectors.joining(" "));
+		String delayedPunctuationWords = IntStream.rangeClosed(101, 170)
+				.mapToObj(i -> "w" + i)
+				.collect(Collectors.joining(" "));
+		String content = firstHundredWords + " " + delayedPunctuationWords + " finally.";
+		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", content.getBytes());
+
+		Job finished = awaitFinishedJob(jobService.submit(file));
+		assertThat(finished.getPages()).hasSize(1);
+		assertThat(finished.getPages().get(0)).endsWith("finally.");
+	}
+
+	@Test
+	void splitterClosesLastPageAtEofWhenNoPunctuationAfterThreshold() throws Exception {
+		String words = IntStream.rangeClosed(1, 130)
+				.mapToObj(i -> "w" + i)
+				.collect(Collectors.joining(" "));
+		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", words.getBytes());
+
+		Job finished = awaitFinishedJob(jobService.submit(file));
+		assertThat(finished.getPages()).hasSize(1);
+		assertThat(finished.getPages().get(0)).endsWith("w130");
+	}
+
+	@Test
+	void processingErrorMarksJobAsError() throws Exception {
+		Job job = new Job("bad-job", "bad.txt", Instant.now(), null);
+		job.setStatus(JobStatus.IN_PROGRESS);
+		job.setPhase(JobPhase.QUEUED_FOR_SPLITTING);
+		jobService.jobs.put(job.getId(), job);
+		jobService.phaseOneJobIds.offer(job.getId());
+
 		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
 		while (System.nanoTime() < deadline) {
-			Optional<Job> opt = jobService.find(id);
-			if (opt.isPresent() && opt.get().getStatus() == JobStatus.FINISHED) {
-				String r = opt.get().getResult();
-				assertThat(r).contains("Processed");
-				assertThat(r).contains("3");
+			Optional<Job> opt = jobService.find(job.getId());
+			if (opt.isPresent() && opt.get().getStatus() == JobStatus.ERROR) {
+				assertThat(opt.get().getPhase()).isEqualTo(JobPhase.FAILED);
+				assertThat(opt.get().getErrorMessage()).isNotBlank();
 				return;
 			}
 			Thread.sleep(20);
 		}
+		fail("Job did not reach ERROR within timeout");
+	}
+
+	private Job awaitFinishedJob(String id) throws Exception {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+		while (System.nanoTime() < deadline) {
+			Optional<Job> opt = jobService.find(id);
+			if (opt.isPresent() && opt.get().getStatus() == JobStatus.FINISHED) {
+				return opt.get();
+			}
+			if (opt.isPresent() && opt.get().getStatus() == JobStatus.ERROR) {
+				fail("Job unexpectedly failed: " + opt.get().getErrorMessage());
+			}
+			Thread.sleep(20);
+		}
 		fail("Job did not reach FINISHED within timeout");
+		return null;
 	}
 }

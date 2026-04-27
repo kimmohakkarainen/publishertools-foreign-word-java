@@ -1,6 +1,7 @@
 package fi.publishertools.foreign.jobs;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * In-memory job: uploaded file bytes and processing outcome.
@@ -13,8 +14,10 @@ public class Job {
 	private final byte[] content;
 
 	private volatile JobStatus status;
+	private volatile JobPhase phase;
 	private volatile String result;
 	private volatile String errorMessage;
+	private volatile List<String> pages = List.of();
 
 	public Job(String id, String originalFilename, Instant submittedAt, byte[] content) {
 		this.id = id;
@@ -47,6 +50,14 @@ public class Job {
 		this.status = status;
 	}
 
+	public JobPhase getPhase() {
+		return phase;
+	}
+
+	public void setPhase(JobPhase phase) {
+		this.phase = phase;
+	}
+
 	public String getResult() {
 		return result;
 	}
@@ -61,5 +72,13 @@ public class Job {
 
 	public void setErrorMessage(String errorMessage) {
 		this.errorMessage = errorMessage;
+	}
+
+	public List<String> getPages() {
+		return pages;
+	}
+
+	public void setPages(List<String> pages) {
+		this.pages = List.copyOf(pages);
 	}
 }

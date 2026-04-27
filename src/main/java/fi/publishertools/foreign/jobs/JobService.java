@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * In-memory job registry and queue for a single worker thread.
+ * In-memory job registry and queues for multi-phase processing.
  */
 @Service
 public class JobService {
@@ -21,8 +21,11 @@ public class JobService {
 	/** For {@link JobWorker} only. */
 	final Map<String, Job> jobs = new ConcurrentHashMap<>();
 
-	/** For {@link JobWorker} only. */
-	final BlockingQueue<String> jobIds = new LinkedBlockingQueue<>();
+	/** For {@link JobWorker} phase 1 only. */
+	final BlockingQueue<String> phaseOneJobIds = new LinkedBlockingQueue<>();
+
+	/** For {@link JobWorker} phase 2 only. */
+	final BlockingQueue<String> phaseTwoJobIds = new LinkedBlockingQueue<>();
 
 	public String submit(MultipartFile file) throws IOException {
 		if (file == null || file.isEmpty()) {
@@ -40,8 +43,9 @@ public class JobService {
 		String name = file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload.txt";
 		Job job = new Job(id, name, Instant.now(), bytes);
 		job.setStatus(JobStatus.IN_PROGRESS);
+		job.setPhase(JobPhase.QUEUED_FOR_SPLITTING);
 		jobs.put(id, job);
-		jobIds.offer(id);
+		phaseOneJobIds.offer(id);
 		return id;
 	}
 

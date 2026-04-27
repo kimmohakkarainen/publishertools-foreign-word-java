@@ -53,15 +53,16 @@ class JobServiceWorkerTest {
 
 	@Test
 	void submitPagesDirectlyEnqueuesToPhaseTwoAndFinishes() throws Exception {
-		String id = jobService.submitPages(List.of(
+		String id = jobService.submitPages("job-words-1", "fi", List.of(
 				new PageText(1, "first page text"),
 				new PageText(2, "second page text")));
-		assertThat(id).isNotBlank();
+		assertThat(id).isEqualTo("job-words-1");
 
 		Job finished = awaitFinishedJob(id);
 		assertThat(finished.getPhase()).isEqualTo(JobPhase.COMPLETED);
 		assertThat(finished.getPages()).hasSize(2);
 		assertThat(finished.getResult()).contains("Processed 2 pages");
+		assertThat(finished.getResult()).contains("Description: defaultLanguage=fi");
 	}
 
 	@Test

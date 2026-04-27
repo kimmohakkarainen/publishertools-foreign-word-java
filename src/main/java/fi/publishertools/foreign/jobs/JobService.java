@@ -45,22 +45,32 @@ public class JobService {
 		Job job = new Job(id, name, Instant.now(), bytes);
 		job.setStatus(JobStatus.IN_PROGRESS);
 		job.setPhase(JobPhase.QUEUED_FOR_SPLITTING);
+		job.setDescription("defaultLanguage=en");
 		jobs.put(id, job);
 		phaseOneJobIds.offer(id);
 		return id;
 	}
 
 	public String submitPages(List<PageText> pages) {
+		return submitPages(null, "en", pages);
+	}
+
+	public String submitPages(String requestedId, String defaultLanguage, List<PageText> pages) {
 		if (pages == null || pages.isEmpty()) {
 			throw new IllegalArgumentException("Pages are required and must not be empty");
 		}
 		if (pages.stream().anyMatch(page -> page == null || page.text() == null || page.page() <= 0)) {
 			throw new IllegalArgumentException("Pages must include positive page and non-null text");
 		}
-		String id = UUID.randomUUID().toString();
+		String id = (requestedId == null || requestedId.isBlank()) ? UUID.randomUUID().toString() : requestedId;
+		if (jobs.containsKey(id)) {
+			throw new IllegalArgumentException("Job id already exists: " + id);
+		}
+		String language = (defaultLanguage == null || defaultLanguage.isBlank()) ? "en" : defaultLanguage;
 		Job job = new Job(id, "words4-submit", Instant.now(), new byte[0]);
 		job.setStatus(JobStatus.IN_PROGRESS);
 		job.setPhase(JobPhase.QUEUED_FOR_PROCESSING);
+		job.setDescription("defaultLanguage=" + language);
 		job.setPages(pages);
 		jobs.put(id, job);
 		phaseTwoJobIds.offer(id);

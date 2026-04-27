@@ -17,6 +17,7 @@ public class Job {
 	private volatile JobPhase phase;
 	private volatile String result;
 	private volatile String errorMessage;
+	private volatile String description;
 	private volatile List<PageText> pages = List.of();
 
 	public Job(String id, String originalFilename, Instant submittedAt, byte[] content) {
@@ -72,6 +73,14 @@ public class Job {
 
 	public void setErrorMessage(String errorMessage) {
 		this.errorMessage = errorMessage;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
 	}
 
 	public List<PageText> getPages() {

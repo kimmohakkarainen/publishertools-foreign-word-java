@@ -1,11 +1,17 @@
 package fi.publishertools.foreign.jobs;
 
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+
+import java.time.Instant;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,8 +36,10 @@ class Words4ControllerTest {
 
 	@Test
 	void postSubmitReturnsCreated() throws Exception {
-		when(jobService.submitPages(anyList())).thenReturn("job-words-1");
+		when(jobService.submitPages(eq("job-words-1"), eq("fi"), anyList())).thenReturn("job-words-1");
 		mockMvc.perform(post("/words4/submit")
+				.queryParam("id", "job-words-1")
+				.queryParam("defaultLanguage", "fi")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"text\":[{\"page\":1,\"text\":\"first page\"},{\"page\":2,\"text\":\"second page\"}]}"))
 				.andExpect(status().isCreated())
@@ -42,8 +50,65 @@ class Words4ControllerTest {
 	@Test
 	void postSubmitBadPayloadReturnsBadRequest() throws Exception {
 		mockMvc.perform(post("/words4/submit")
+				.queryParam("id", "job-words-1")
+				.queryParam("defaultLanguage", "fi")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"text\":null}"))
 				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void getStatusReturns404WhenMissing() throws Exception {
+		when(jobService.find("missing")).thenReturn(Optional.empty());
+		mockMvc.perform(get("/words4/jobs/missing/status"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void getStatusReturnsInProgress() throws Exception {
+		Job job = new Job("j1", "words4-submit", Instant.now(), new byte[0]);
+		job.setStatus(JobStatus.IN_PROGRESS);
+		when(jobService.find("j1")).thenReturn(Optional.of(job));
+		mockMvc.perform(get("/words4/jobs/j1/status"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("IN_PROGRESS"));
+	}
+
+	@Test
+	void getStatusReturnsFinished() throws Exception {
+		Job job = new Job("j2", "words4-submit", Instant.now(), new byte[0]);
+		job.setStatus(JobStatus.FINISHED);
+		when(jobService.find("j2")).thenReturn(Optional.of(job));
+		mockMvc.perform(get("/words4/jobs/j2/status"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("FINISHED"));
+	}
+
+	@Test
+	void getStatusReturnsFailedForError() throws Exception {
+		Job job = new Job("j3", "words4-submit", Instant.now(), new byte[0]);
+		job.setStatus(JobStatus.ERROR);
+		when(jobService.find("j3")).thenReturn(Optional.of(job));
+		mockMvc.perform(get("/words4/jobs/j3/status"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("FAILED"));
+	}
+
+	@Test
+	void getResourceReturnsFinishedResult() throws Exception {
+		Job job = new Job("j4", "words4-submit", Instant.now(), new byte[0]);
+		job.setStatus(JobStatus.FINISHED);
+		job.setResult("finished-result");
+		when(jobService.find("j4")).thenReturn(Optional.of(job));
+		mockMvc.perform(get("/words4/jobs/j4/resource"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("finished-result"));
+	}
+
+	@Test
+	void getResourceReturns404WhenMissing() throws Exception {
+		when(jobService.find("missing")).thenReturn(Optional.empty());
+		mockMvc.perform(get("/words4/jobs/missing/resource"))
+				.andExpect(status().isNotFound());
 	}
 }

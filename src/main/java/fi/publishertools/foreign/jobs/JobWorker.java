@@ -158,8 +158,11 @@ public class JobWorker {
 		String preview = pageCount > 0
 				? pages.get(0).text().substring(0, Math.min(120, pages.get(0).text().length())).replaceAll("\\R", " ")
 				: "";
+		String descriptionSuffix = (job.getDescription() == null || job.getDescription().isBlank())
+				? ""
+				: " Description: " + job.getDescription();
 		return "Processed " + pageCount + " pages and " + totalWords + " words from "
-				+ job.getOriginalFilename() + ". First page preview: " + preview;
+				+ job.getOriginalFilename() + ". First page preview: " + preview + descriptionSuffix;
 	}
 
 	private int countWords(String text) {

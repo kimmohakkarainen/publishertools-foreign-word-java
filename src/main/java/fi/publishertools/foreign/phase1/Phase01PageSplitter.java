@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase01pagesplit;
+package fi.publishertools.foreign.phase1;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

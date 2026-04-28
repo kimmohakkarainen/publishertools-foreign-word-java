@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase02foreignwords;
+package fi.publishertools.foreign.phase2;
 
 import java.util.ArrayList;
 import java.util.List;

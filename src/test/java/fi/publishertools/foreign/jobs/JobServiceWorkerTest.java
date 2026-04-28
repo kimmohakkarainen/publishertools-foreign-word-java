@@ -20,13 +20,13 @@ import org.springframework.mock.web.MockMultipartFile;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import fi.publishertools.foreign.jobs.phase01pagesplit.Phase01SplitWorker;
-import fi.publishertools.foreign.jobs.phase02foreignwords.DetectedForeignWord;
-import fi.publishertools.foreign.jobs.phase02foreignwords.ForeignWordDetectionClient;
-import fi.publishertools.foreign.jobs.phase02foreignwords.Phase02ForeignWordsProcessor;
-import fi.publishertools.foreign.jobs.phase02foreignwords.Phase02ForeignWordsWorker;
-import fi.publishertools.foreign.jobs.phase03crosspage.Phase03CrossPageWorker;
-import fi.publishertools.foreign.jobs.phase04ipa.Phase04IpaWorker;
+import fi.publishertools.foreign.phase1.Phase01SplitWorker;
+import fi.publishertools.foreign.phase2.DetectedForeignWord;
+import fi.publishertools.foreign.phase2.ForeignWordDetectionClient;
+import fi.publishertools.foreign.phase2.Phase02ForeignWordsProcessor;
+import fi.publishertools.foreign.phase2.Phase02ForeignWordsWorker;
+import fi.publishertools.foreign.phase3.Phase03CrossPageWorker;
+import fi.publishertools.foreign.phase4.Phase04IpaWorker;
 
 @SpringBootTest(
 		classes = JobServiceWorkerTest.WorkerTestContext.class,

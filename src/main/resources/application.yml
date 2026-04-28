@@ -12,15 +12,15 @@ server:
   port: 8888
 
 foreign-words:
-  provider: ollama   # "ollama" or "ms-foundry"
+  provider: ms-foundry   # "ollama" or "ms-foundry"
   ollama:
     base-url: http://localhost:11434
     model: mistral
     request-timeout: 120s
   ms-foundry:
-    endpoint: https://<resource>.services.ai.azure.com/models
+    endpoint: https://pt-ai-foundry.services.ai.azure.com/models
     api-key: ${MS_FOUNDRY_API_KEY:}
-    model: mistral-2505
+    model: mistral-medium-2505
     request-timeout: 120s
 
 logging:

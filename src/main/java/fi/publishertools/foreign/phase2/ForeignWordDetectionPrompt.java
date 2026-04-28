@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase02foreignwords;
+package fi.publishertools.foreign.phase2;
 
 /**
  * Holds the system prompt used by every Phase02 detection client.

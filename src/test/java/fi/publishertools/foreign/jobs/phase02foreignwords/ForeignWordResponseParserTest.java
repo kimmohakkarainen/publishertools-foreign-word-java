@@ -9,6 +9,10 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import fi.publishertools.foreign.phase2.DetectedForeignWord;
+import fi.publishertools.foreign.phase2.ForeignWordDetectionException;
+import fi.publishertools.foreign.phase2.ForeignWordResponseParser;
+
 class ForeignWordResponseParserTest {
 
 	private final ForeignWordResponseParser parser = new ForeignWordResponseParser(new ObjectMapper());

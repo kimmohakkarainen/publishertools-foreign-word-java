@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase03crosspage;
+package fi.publishertools.foreign.phase3;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

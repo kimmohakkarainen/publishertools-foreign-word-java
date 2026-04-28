@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase02foreignwords;
+package fi.publishertools.foreign.phase2;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

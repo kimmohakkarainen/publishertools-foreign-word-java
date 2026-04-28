@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase01pagesplit;
+package fi.publishertools.foreign.phase3;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -9,20 +9,20 @@ import fi.publishertools.foreign.jobs.Job;
 import fi.publishertools.foreign.jobs.JobPhase;
 import fi.publishertools.foreign.jobs.JobService;
 import fi.publishertools.foreign.jobs.JobStatus;
-import fi.publishertools.foreign.jobs.PageText;
+import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
 @Component
-public class Phase01SplitWorker {
+public class Phase03CrossPageWorker {
 
 	private final JobService jobService;
-	private final Phase01PageSplitter pageSplitter = new Phase01PageSplitter();
+	private final Phase03CrossPageProcessor processor = new Phase03CrossPageProcessor();
 	private final AtomicBoolean running = new AtomicBoolean(true);
 	private Thread workerThread;
 
-	public Phase01SplitWorker(JobService jobService) {
+	public Phase03CrossPageWorker(JobService jobService) {
 		this.jobService = jobService;
 	}
 
@@ -30,7 +30,7 @@ public class Phase01SplitWorker {
 	public void start() {
 		workerThread = Thread.ofPlatform()
 				.daemon()
-				.name("phase01-split-worker")
+				.name("phase03-crosspage-worker")
 				.unstarted(this::runLoop);
 		workerThread.start();
 	}
@@ -46,17 +46,18 @@ public class Phase01SplitWorker {
 	private void runLoop() {
 		while (running.get() && !Thread.currentThread().isInterrupted()) {
 			try {
-				String id = jobService.phase01SplitJobIds.take();
+				String id = jobService.words4Phase03JobIds.take();
 				Job job = jobService.jobs.get(id);
-				if (job == null) {
+				if (job == null || job.getStatus() == JobStatus.ERROR) {
 					continue;
 				}
 				try {
-					job.setPhase(JobPhase.PHASE01_SPLITTING);
-					List<PageText> pages = pageSplitter.splitIntoPages(job.getContent());
-					job.setPages(pages);
-					job.setPhase(JobPhase.QUEUED_LEGACY_POST_SPLIT);
-					jobService.legacyPostSplitJobIds.put(id);
+					job.setPhase(JobPhase.WORDS4_PHASE03);
+					List<Words4TranscriptionItem> current = job.getWords4Transcriptions();
+					List<Words4TranscriptionItem> merged = processor.mergeCrossPage(current);
+					job.setWords4Transcriptions(merged);
+					job.setPhase(JobPhase.QUEUED_WORDS4_PHASE04);
+					jobService.words4Phase04JobIds.put(id);
 				} catch (Exception e) {
 					failJob(job, e);
 				}

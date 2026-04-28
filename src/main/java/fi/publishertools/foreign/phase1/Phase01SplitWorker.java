@@ -1,6 +1,5 @@
-package fi.publishertools.foreign.jobs.phase02foreignwords;
+package fi.publishertools.foreign.phase1;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -10,31 +9,28 @@ import fi.publishertools.foreign.jobs.Job;
 import fi.publishertools.foreign.jobs.JobPhase;
 import fi.publishertools.foreign.jobs.JobService;
 import fi.publishertools.foreign.jobs.JobStatus;
-import fi.publishertools.foreign.jobs.JobWords4;
 import fi.publishertools.foreign.jobs.PageText;
-import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
 @Component
-public class Phase02ForeignWordsWorker {
+public class Phase01SplitWorker {
 
 	private final JobService jobService;
-	private final Phase02ForeignWordsProcessor processor;
+	private final Phase01PageSplitter pageSplitter = new Phase01PageSplitter();
 	private final AtomicBoolean running = new AtomicBoolean(true);
 	private Thread workerThread;
 
-	public Phase02ForeignWordsWorker(JobService jobService, Phase02ForeignWordsProcessor processor) {
+	public Phase01SplitWorker(JobService jobService) {
 		this.jobService = jobService;
-		this.processor = processor;
 	}
 
 	@PostConstruct
 	public void start() {
 		workerThread = Thread.ofPlatform()
 				.daemon()
-				.name("phase02-foreign-words-worker")
+				.name("phase01-split-worker")
 				.unstarted(this::runLoop);
 		workerThread.start();
 	}
@@ -50,21 +46,17 @@ public class Phase02ForeignWordsWorker {
 	private void runLoop() {
 		while (running.get() && !Thread.currentThread().isInterrupted()) {
 			try {
-				String id = jobService.words4Phase02JobIds.take();
+				String id = jobService.phase01SplitJobIds.take();
 				Job job = jobService.jobs.get(id);
-				if (job == null || job.getStatus() == JobStatus.ERROR) {
+				if (job == null) {
 					continue;
 				}
 				try {
-					job.setPhase(JobPhase.WORDS4_PHASE02);
-					List<PageText> pages = job.getPages().stream()
-							.sorted(Comparator.comparingInt(PageText::page))
-							.toList();
-					String language = JobWords4.parseDefaultLanguage(job);
-					List<Words4TranscriptionItem> transcriptions = processor.detectForeignWords(pages, language);
-					job.setWords4Transcriptions(transcriptions);
-					job.setPhase(JobPhase.QUEUED_WORDS4_PHASE03);
-					jobService.words4Phase03JobIds.put(id);
+					job.setPhase(JobPhase.PHASE01_SPLITTING);
+					List<PageText> pages = pageSplitter.splitIntoPages(job.getContent());
+					job.setPages(pages);
+					job.setPhase(JobPhase.QUEUED_LEGACY_POST_SPLIT);
+					jobService.legacyPostSplitJobIds.put(id);
 				} catch (Exception e) {
 					failJob(job, e);
 				}

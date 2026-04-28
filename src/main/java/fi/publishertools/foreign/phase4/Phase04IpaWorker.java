@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase04ipa;
+package fi.publishertools.foreign.phase4;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;

@@ -10,6 +10,9 @@ import org.junit.jupiter.api.Test;
 
 import fi.publishertools.foreign.jobs.PageText;
 import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
+import fi.publishertools.foreign.phase2.DetectedForeignWord;
+import fi.publishertools.foreign.phase2.ForeignWordDetectionClient;
+import fi.publishertools.foreign.phase2.Phase02ForeignWordsProcessor;
 
 class Phase02ForeignWordsProcessorTest {
 

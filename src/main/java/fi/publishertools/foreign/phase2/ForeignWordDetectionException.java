@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase02foreignwords;
+package fi.publishertools.foreign.phase2;
 
 /**
  * Thrown when a Phase02 detection client fails to call the LLM or parse its response.

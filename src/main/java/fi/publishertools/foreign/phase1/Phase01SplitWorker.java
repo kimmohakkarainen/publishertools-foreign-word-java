@@ -10,6 +10,7 @@ import fi.publishertools.foreign.jobs.JobPhase;
 import fi.publishertools.foreign.jobs.JobService;
 import fi.publishertools.foreign.jobs.JobStatus;
 import fi.publishertools.foreign.jobs.PageText;
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -54,7 +55,7 @@ public class Phase01SplitWorker {
 				try {
 					job.setPhase(JobPhase.PHASE01_SPLITTING);
 					List<PageText> pages = pageSplitter.splitIntoPages(job.getContent());
-					job.setPages(pages);
+					job.setWords4PhaseItems(pages.stream().map(Words4PhaseItem::fromPageText).toList());
 					job.setPhase(JobPhase.QUEUED_LEGACY_POST_SPLIT);
 					jobService.legacyPostSplitJobIds.put(id);
 				} catch (Exception e) {

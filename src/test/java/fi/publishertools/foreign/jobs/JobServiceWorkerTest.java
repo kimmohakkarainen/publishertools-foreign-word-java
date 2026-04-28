@@ -104,7 +104,7 @@ class JobServiceWorkerTest {
 		Job finished = awaitFinishedJob(id);
 		assertThat(finished.getPhase()).isEqualTo(JobPhase.COMPLETED);
 		assertThat(finished.getResult()).contains("Processed 1 pages");
-		assertThat(finished.getPages()).hasSize(1);
+		assertThat(finished.getWords4PhaseItems().stream().filter(item -> item.hasSourceText()).toList()).hasSize(1);
 	}
 
 	@Test
@@ -117,7 +117,7 @@ class JobServiceWorkerTest {
 
 		Job finished = awaitFinishedJob(id);
 		assertThat(finished.getPhase()).isEqualTo(JobPhase.COMPLETED);
-		assertThat(finished.getPages()).hasSize(2);
+		assertThat(finished.getWords4PhaseItems()).isEmpty();
 		JsonNode root = objectMapper.readTree(finished.getResult());
 		assertThat(root.get("transcriptions").size()).isEqualTo(2);
 		for (int i = 0; i < 2; i++) {
@@ -139,9 +139,13 @@ class JobServiceWorkerTest {
 		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", content.getBytes());
 
 		Job finished = awaitFinishedJob(jobService.submit(file));
-		assertThat(finished.getPages()).hasSize(2);
-		assertThat(finished.getPages().get(0).text()).endsWith("stop!");
-		assertThat(finished.getPages().get(1).text()).isEqualTo(" after split");
+		List<PageText> pages = finished.getWords4PhaseItems().stream()
+				.filter(item -> item.hasSourceText())
+				.map(item -> new PageText(item.page(), item.sourceText()))
+				.toList();
+		assertThat(pages).hasSize(2);
+		assertThat(pages.get(0).text()).endsWith("stop!");
+		assertThat(pages.get(1).text()).isEqualTo(" after split");
 	}
 
 	@Test
@@ -156,8 +160,12 @@ class JobServiceWorkerTest {
 		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", content.getBytes());
 
 		Job finished = awaitFinishedJob(jobService.submit(file));
-		assertThat(finished.getPages()).hasSize(1);
-		assertThat(finished.getPages().get(0).text()).endsWith("finally.");
+		List<PageText> pages = finished.getWords4PhaseItems().stream()
+				.filter(item -> item.hasSourceText())
+				.map(item -> new PageText(item.page(), item.sourceText()))
+				.toList();
+		assertThat(pages).hasSize(1);
+		assertThat(pages.get(0).text()).endsWith("finally.");
 	}
 
 	@Test
@@ -168,8 +176,12 @@ class JobServiceWorkerTest {
 		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", words.getBytes());
 
 		Job finished = awaitFinishedJob(jobService.submit(file));
-		assertThat(finished.getPages()).hasSize(1);
-		assertThat(finished.getPages().get(0).text()).endsWith("w130");
+		List<PageText> pages = finished.getWords4PhaseItems().stream()
+				.filter(item -> item.hasSourceText())
+				.map(item -> new PageText(item.page(), item.sourceText()))
+				.toList();
+		assertThat(pages).hasSize(1);
+		assertThat(pages.get(0).text()).endsWith("w130");
 	}
 
 	@Test

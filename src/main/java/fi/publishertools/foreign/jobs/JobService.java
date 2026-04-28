@@ -13,6 +13,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
+
 /**
  * In-memory job registry and queues for multi-phase processing.
  * <p>
@@ -79,7 +81,7 @@ public class JobService {
 		job.setStatus(JobStatus.IN_PROGRESS);
 		job.setPhase(JobPhase.QUEUED_WORDS4_PHASE02);
 		job.setDescription("defaultLanguage=" + language);
-		job.setPages(pages);
+		job.setWords4PhaseItems(pages.stream().map(Words4PhaseItem::fromPageText).toList());
 		jobs.put(id, job);
 		words4Phase02JobIds.offer(id);
 		return id;

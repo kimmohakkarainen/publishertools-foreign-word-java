@@ -9,7 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import fi.publishertools.foreign.jobs.PageText;
-import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 import fi.publishertools.foreign.phase2.DetectedForeignWord;
 import fi.publishertools.foreign.phase2.ForeignWordDetectionClient;
 import fi.publishertools.foreign.phase2.Phase02ForeignWordsProcessor;
@@ -26,9 +26,9 @@ class Phase02ForeignWordsProcessorTest {
 				new DetectedForeignWord("Ljuset har försvunnit", "sv")));
 		Phase02ForeignWordsProcessor processor = new Phase02ForeignWordsProcessor(canned::get);
 
-		List<Words4TranscriptionItem> out = processor.detectForeignWords(List.of(
-				new PageText(1, "page-one"),
-				new PageText(2, "page-two")), "fi");
+		List<Words4PhaseItem> out = processor.detectForeignWords(List.of(
+				Words4PhaseItem.fromPageText(new PageText(1, "page-one")),
+				Words4PhaseItem.fromPageText(new PageText(2, "page-two"))), "fi");
 
 		assertThat(out).hasSize(3);
 		assertThat(out.get(0).word()).isEqualTo("Bordeaux'n");
@@ -49,10 +49,10 @@ class Phase02ForeignWordsProcessorTest {
 		ForeignWordDetectionClient client = text -> List.of();
 		Phase02ForeignWordsProcessor processor = new Phase02ForeignWordsProcessor(client);
 
-		List<Words4TranscriptionItem> out = processor.detectForeignWords(List.of(
-				new PageText(1, ""),
-				new PageText(2, "  "),
-				new PageText(3, "real text")), "en");
+		List<Words4PhaseItem> out = processor.detectForeignWords(List.of(
+				Words4PhaseItem.fromPageText(new PageText(1, "")),
+				Words4PhaseItem.fromPageText(new PageText(2, "  ")),
+				Words4PhaseItem.fromPageText(new PageText(3, "real text"))), "en");
 
 		assertThat(out).isEmpty();
 	}
@@ -62,8 +62,8 @@ class Phase02ForeignWordsProcessorTest {
 		ForeignWordDetectionClient client = text -> List.of(new DetectedForeignWord("foo", null));
 		Phase02ForeignWordsProcessor processor = new Phase02ForeignWordsProcessor(client);
 
-		List<Words4TranscriptionItem> out = processor.detectForeignWords(
-				List.of(new PageText(1, "anything")), "fi");
+		List<Words4PhaseItem> out = processor.detectForeignWords(
+				List.of(Words4PhaseItem.fromPageText(new PageText(1, "anything"))), "fi");
 
 		assertThat(out).hasSize(1);
 		assertThat(out.get(0).language()).isEqualTo("fi");

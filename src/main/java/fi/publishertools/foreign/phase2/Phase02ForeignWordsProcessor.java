@@ -5,8 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import fi.publishertools.foreign.jobs.PageText;
-import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 
 /**
  * Detects foreign words on each page by delegating to the configured
@@ -25,16 +24,16 @@ public class Phase02ForeignWordsProcessor {
 		this.client = client;
 	}
 
-	public List<Words4TranscriptionItem> detectForeignWords(List<PageText> pages, String language) {
-		List<Words4TranscriptionItem> out = new ArrayList<>();
-		if (pages == null) {
+	public List<Words4PhaseItem> detectForeignWords(List<Words4PhaseItem> items, String language) {
+		List<Words4PhaseItem> out = new ArrayList<>();
+		if (items == null) {
 			return out;
 		}
-		for (PageText page : pages) {
-			if (page == null || page.text() == null || page.text().isBlank()) {
+		for (Words4PhaseItem item : items) {
+			if (item == null || !item.hasSourceText()) {
 				continue;
 			}
-			List<DetectedForeignWord> detected = client.detect(page.text());
+			List<DetectedForeignWord> detected = client.detect(item.sourceText());
 			if (detected == null || detected.isEmpty()) {
 				continue;
 			}
@@ -42,16 +41,7 @@ public class Phase02ForeignWordsProcessor {
 				if (word == null || word.word() == null || word.word().isBlank()) {
 					continue;
 				}
-				String wordLanguage = (word.language() == null || word.language().isBlank())
-						? language
-						: word.language();
-				out.add(new Words4TranscriptionItem(
-						List.of(),
-						"",
-						wordLanguage,
-						List.of(page.page()),
-						"",
-						word.word()));
+				out.add(Words4PhaseItem.fromDetectedWord(item.page(), language, word.word(), word.language()));
 			}
 		}
 		return out;

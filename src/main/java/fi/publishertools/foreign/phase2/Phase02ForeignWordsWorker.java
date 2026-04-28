@@ -11,8 +11,7 @@ import fi.publishertools.foreign.jobs.JobPhase;
 import fi.publishertools.foreign.jobs.JobService;
 import fi.publishertools.foreign.jobs.JobStatus;
 import fi.publishertools.foreign.jobs.JobWords4;
-import fi.publishertools.foreign.jobs.PageText;
-import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -57,12 +56,13 @@ public class Phase02ForeignWordsWorker {
 				}
 				try {
 					job.setPhase(JobPhase.WORDS4_PHASE02);
-					List<PageText> pages = job.getPages().stream()
-							.sorted(Comparator.comparingInt(PageText::page))
+					List<Words4PhaseItem> phaseItems = job.getWords4PhaseItems().stream()
+							.filter(Words4PhaseItem::hasSourceText)
+							.sorted(Comparator.comparingInt(Words4PhaseItem::page))
 							.toList();
 					String language = JobWords4.parseDefaultLanguage(job);
-					List<Words4TranscriptionItem> transcriptions = processor.detectForeignWords(pages, language);
-					job.setWords4Transcriptions(transcriptions);
+					List<Words4PhaseItem> transcriptions = processor.detectForeignWords(phaseItems, language);
+					job.setWords4PhaseItems(transcriptions);
 					job.setPhase(JobPhase.QUEUED_WORDS4_PHASE03);
 					jobService.words4Phase03JobIds.put(id);
 				} catch (Exception e) {

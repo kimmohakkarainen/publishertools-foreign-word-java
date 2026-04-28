@@ -72,7 +72,9 @@ public class LegacyPostSplitWorker {
 	}
 
 	String processLegacy(Job job) {
-		List<PageText> pages = job.getPages().stream()
+		List<PageText> pages = job.getWords4PhaseItems().stream()
+				.filter(item -> item.hasSourceText())
+				.map(item -> new PageText(item.page(), item.sourceText()))
 				.sorted(Comparator.comparingInt(PageText::page))
 				.toList();
 		int pageCount = pages.size();

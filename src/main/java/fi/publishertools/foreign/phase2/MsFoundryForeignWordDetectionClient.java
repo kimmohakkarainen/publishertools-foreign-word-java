@@ -37,7 +37,12 @@ public class MsFoundryForeignWordDetectionClient implements ForeignWordDetection
 				"messages", List.of(
 						Map.of("role", "system", "content",
 								ForeignWordDetectionPrompt.FOREIGN_WORD_DETECTION_PROMPT),
-						Map.of("role", "user", "content", pageText)));
+						Map.of("role", "user", "content", pageText)),
+				"max_tokens", 4000,
+				"temperature", 0.0,
+				"response_format", Map.of("type", "json_object"),
+				"random_seed", 34088039
+				);
 		Map<?, ?> response;
 		try {
 			response = restClient.post()

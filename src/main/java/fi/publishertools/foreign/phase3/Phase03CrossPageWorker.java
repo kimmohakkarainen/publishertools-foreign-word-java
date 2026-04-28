@@ -9,7 +9,7 @@ import fi.publishertools.foreign.jobs.Job;
 import fi.publishertools.foreign.jobs.JobPhase;
 import fi.publishertools.foreign.jobs.JobService;
 import fi.publishertools.foreign.jobs.JobStatus;
-import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -53,9 +53,9 @@ public class Phase03CrossPageWorker {
 				}
 				try {
 					job.setPhase(JobPhase.WORDS4_PHASE03);
-					List<Words4TranscriptionItem> current = job.getWords4Transcriptions();
-					List<Words4TranscriptionItem> merged = processor.mergeCrossPage(current);
-					job.setWords4Transcriptions(merged);
+					List<Words4PhaseItem> current = job.getWords4PhaseItems();
+					List<Words4PhaseItem> merged = processor.mergeCrossPage(current);
+					job.setWords4PhaseItems(merged);
 					job.setPhase(JobPhase.QUEUED_WORDS4_PHASE04);
 					jobService.words4Phase04JobIds.put(id);
 				} catch (Exception e) {

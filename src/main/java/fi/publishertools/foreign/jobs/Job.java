@@ -3,7 +3,7 @@ package fi.publishertools.foreign.jobs;
 import java.time.Instant;
 import java.util.List;
 
-import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 
 /**
  * In-memory job: uploaded file bytes and processing outcome.
@@ -20,9 +20,8 @@ public class Job {
 	private volatile String result;
 	private volatile String errorMessage;
 	private volatile String description;
-	private volatile List<PageText> pages = List.of();
-	/** Words4 phases 2–4; cleared when final JSON is written to {@link #result}. */
-	private volatile List<Words4TranscriptionItem> words4Transcriptions = List.of();
+	/** Unified words4 phase payload; fields are progressively populated phase by phase. */
+	private volatile List<Words4PhaseItem> words4PhaseItems = List.of();
 
 	public Job(String id, String originalFilename, Instant submittedAt, byte[] content) {
 		this.id = id;
@@ -87,19 +86,11 @@ public class Job {
 		this.description = description;
 	}
 
-	public List<PageText> getPages() {
-		return pages;
+	public List<Words4PhaseItem> getWords4PhaseItems() {
+		return words4PhaseItems;
 	}
 
-	public void setPages(List<PageText> pages) {
-		this.pages = List.copyOf(pages);
-	}
-
-	public List<Words4TranscriptionItem> getWords4Transcriptions() {
-		return words4Transcriptions;
-	}
-
-	public void setWords4Transcriptions(List<Words4TranscriptionItem> words4Transcriptions) {
-		this.words4Transcriptions = words4Transcriptions == null ? List.of() : List.copyOf(words4Transcriptions);
+	public void setWords4PhaseItems(List<Words4PhaseItem> words4PhaseItems) {
+		this.words4PhaseItems = words4PhaseItems == null ? List.of() : List.copyOf(words4PhaseItems);
 	}
 }

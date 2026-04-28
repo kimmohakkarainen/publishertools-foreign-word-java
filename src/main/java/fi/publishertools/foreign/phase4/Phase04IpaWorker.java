@@ -13,6 +13,7 @@ import fi.publishertools.foreign.jobs.JobPhase;
 import fi.publishertools.foreign.jobs.JobService;
 import fi.publishertools.foreign.jobs.JobStatus;
 import fi.publishertools.foreign.jobs.dto.Words4FinishedPayload;
+import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
 
 import jakarta.annotation.PostConstruct;
@@ -59,9 +60,12 @@ public class Phase04IpaWorker {
 				}
 				try {
 					job.setPhase(JobPhase.WORDS4_PHASE04);
-					List<Words4TranscriptionItem> withIpa = processor.addIpa(job.getWords4Transcriptions());
-					String json = objectMapper.writeValueAsString(new Words4FinishedPayload(withIpa));
-					job.setWords4Transcriptions(List.of());
+					List<Words4PhaseItem> withIpa = processor.addIpa(job.getWords4PhaseItems());
+					List<Words4TranscriptionItem> transcriptions = withIpa.stream()
+							.map(Words4PhaseItem::toTranscriptionItem)
+							.toList();
+					String json = objectMapper.writeValueAsString(new Words4FinishedPayload(transcriptions));
+					job.setWords4PhaseItems(List.of());
 					job.setResult(json);
 					job.setStatus(JobStatus.FINISHED);
 					job.setPhase(JobPhase.COMPLETED);

@@ -50,6 +50,10 @@ public record Words4PhaseItem(
 		return new Words4PhaseItem(page, sourceText, inflections, ipaValue, language, pages, rawIpaValue, word);
 	}
 
+	public Words4PhaseItem withWordInflectionsAndPages(String mergedWord, List<String> mergedInflections, List<Integer> mergedPages) {
+		return new Words4PhaseItem(page, sourceText, mergedInflections, ipa, language, mergedPages, rawIpa, mergedWord);
+	}
+
 	public boolean hasSourceText() {
 		return sourceText != null && !sourceText.isBlank() && page != null && page > 0;
 	}

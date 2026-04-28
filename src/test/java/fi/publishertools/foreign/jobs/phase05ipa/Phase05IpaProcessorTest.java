@@ -1,4 +1,4 @@
-package fi.publishertools.foreign.jobs.phase04ipa;
+package fi.publishertools.foreign.jobs.phase05ipa;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -7,11 +7,11 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
-import fi.publishertools.foreign.phase4.Phase04IpaProcessor;
+import fi.publishertools.foreign.phase5.Phase05IpaProcessor;
 
-class Phase04IpaProcessorTest {
+class Phase05IpaProcessorTest {
 
-	private final Phase04IpaProcessor processor = new Phase04IpaProcessor();
+	private final Phase05IpaProcessor processor = new Phase05IpaProcessor();
 
 	@Test
 	void setsIpaAndRawIpaToWord() {

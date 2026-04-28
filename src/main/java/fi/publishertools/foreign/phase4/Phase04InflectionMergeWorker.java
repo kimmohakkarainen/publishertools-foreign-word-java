@@ -5,39 +5,32 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import fi.publishertools.foreign.jobs.Job;
 import fi.publishertools.foreign.jobs.JobPhase;
 import fi.publishertools.foreign.jobs.JobService;
 import fi.publishertools.foreign.jobs.JobStatus;
-import fi.publishertools.foreign.jobs.dto.Words4FinishedPayload;
 import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
-import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
-
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
 @Component
-public class Phase04IpaWorker {
+public class Phase04InflectionMergeWorker {
 
 	private final JobService jobService;
-	private final ObjectMapper objectMapper;
-	private final Phase04IpaProcessor processor = new Phase04IpaProcessor();
+	private final Phase04InflectionMergeProcessor processor;
 	private final AtomicBoolean running = new AtomicBoolean(true);
 	private Thread workerThread;
 
-	public Phase04IpaWorker(JobService jobService, ObjectMapper objectMapper) {
+	public Phase04InflectionMergeWorker(JobService jobService, Phase04InflectionMergeProcessor processor) {
 		this.jobService = jobService;
-		this.objectMapper = objectMapper;
+		this.processor = processor;
 	}
 
 	@PostConstruct
 	public void start() {
 		workerThread = Thread.ofPlatform()
 				.daemon()
-				.name("phase04-ipa-worker")
+				.name("phase04-inflection-merge-worker")
 				.unstarted(this::runLoop);
 		workerThread.start();
 	}
@@ -60,15 +53,11 @@ public class Phase04IpaWorker {
 				}
 				try {
 					job.setPhase(JobPhase.WORDS4_PHASE04);
-					List<Words4PhaseItem> withIpa = processor.addIpa(job.getWords4PhaseItems());
-					List<Words4TranscriptionItem> transcriptions = withIpa.stream()
-							.map(Words4PhaseItem::toTranscriptionItem)
-							.toList();
-					String json = objectMapper.writeValueAsString(new Words4FinishedPayload(transcriptions));
-					job.setWords4PhaseItems(List.of());
-					job.setResult(json);
-					job.setStatus(JobStatus.FINISHED);
-					job.setPhase(JobPhase.COMPLETED);
+					List<Words4PhaseItem> current = job.getWords4PhaseItems();
+					List<Words4PhaseItem> merged = processor.mergeInflections(current);
+					job.setWords4PhaseItems(merged);
+					job.setPhase(JobPhase.QUEUED_WORDS4_PHASE05);
+					jobService.words4Phase05JobIds.put(id);
 				} catch (Exception e) {
 					failJob(job, e);
 				}
@@ -81,9 +70,6 @@ public class Phase04IpaWorker {
 
 	private static void failJob(Job job, Exception e) {
 		String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
-		if (e instanceof JsonProcessingException) {
-			msg = "Failed to serialize words4 result: " + msg;
-		}
 		job.setErrorMessage(msg);
 		job.setStatus(JobStatus.ERROR);
 		job.setPhase(JobPhase.FAILED);

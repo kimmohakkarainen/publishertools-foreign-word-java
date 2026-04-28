@@ -28,7 +28,11 @@ import fi.publishertools.foreign.phase2.Phase02LlmChatCompletionCoordinator;
 import fi.publishertools.foreign.phase2.Phase02ForeignWordsProcessor;
 import fi.publishertools.foreign.phase2.Phase02ForeignWordsWorker;
 import fi.publishertools.foreign.phase3.Phase03CrossPageWorker;
-import fi.publishertools.foreign.phase4.Phase04IpaWorker;
+import fi.publishertools.foreign.phase4.InflectionMergeClient;
+import fi.publishertools.foreign.phase4.MergedInflectionWord;
+import fi.publishertools.foreign.phase4.Phase04InflectionMergeProcessor;
+import fi.publishertools.foreign.phase4.Phase04InflectionMergeWorker;
+import fi.publishertools.foreign.phase5.Phase05IpaWorker;
 
 @SpringBootTest(
 		classes = JobServiceWorkerTest.WorkerTestContext.class,
@@ -84,7 +88,8 @@ class JobServiceWorkerTest {
 					ForeignWordsProperties.PROVIDER_OLLAMA,
 					null,
 					null,
-					new ForeignWordsProperties.Phase2(2, 32));
+					new ForeignWordsProperties.Phase2(2, 32),
+					null);
 		}
 
 		@Bean
@@ -112,8 +117,34 @@ class JobServiceWorkerTest {
 		}
 
 		@Bean
-		Phase04IpaWorker phase04IpaWorker(JobService service, ObjectMapper objectMapper) {
-			return new Phase04IpaWorker(service, objectMapper);
+		InflectionMergeClient inflectionMergeClient() {
+			return words -> {
+				boolean hasJohnFamily = words.stream().anyMatch(word -> word.toLowerCase().startsWith("joh"));
+				if (hasJohnFamily) {
+					return List.of(new MergedInflectionWord("John", List.of("Johnin", "johnille")));
+				}
+				return words.stream()
+						.sorted(String.CASE_INSENSITIVE_ORDER)
+						.map(word -> new MergedInflectionWord(word, List.of()))
+						.toList();
+			};
+		}
+
+		@Bean
+		Phase04InflectionMergeProcessor phase04InflectionMergeProcessor(InflectionMergeClient client) {
+			return new Phase04InflectionMergeProcessor(client);
+		}
+
+		@Bean
+		Phase04InflectionMergeWorker phase04InflectionMergeWorker(
+				JobService service,
+				Phase04InflectionMergeProcessor processor) {
+			return new Phase04InflectionMergeWorker(service, processor);
+		}
+
+		@Bean
+		Phase05IpaWorker phase05IpaWorker(JobService service, ObjectMapper objectMapper) {
+			return new Phase05IpaWorker(service, objectMapper);
 		}
 	}
 
@@ -150,6 +181,22 @@ class JobServiceWorkerTest {
 			assertThat(t.get("rawIpa").asText()).isEqualTo(t.get("word").asText());
 			assertThat(t.get("pages").isArray()).isTrue();
 		}
+	}
+
+	@Test
+	void submitPagesMergesInflectionsBeforeIpaPhase() throws Exception {
+		String id = jobService.submitPages("job-words-inflections", "fi", List.of(
+				new PageText(1, "Johnin"),
+				new PageText(2, "John"),
+				new PageText(3, "johnille")));
+
+		Job finished = awaitFinishedJob(id);
+		JsonNode root = objectMapper.readTree(finished.getResult());
+		assertThat(root.get("transcriptions").size()).isEqualTo(1);
+		JsonNode merged = root.get("transcriptions").get(0);
+		assertThat(merged.get("word").asText()).isEqualTo("John");
+		assertThat(merged.get("inflections").size()).isEqualTo(2);
+		assertThat(merged.get("pages").size()).isEqualTo(3);
 	}
 
 	@Test

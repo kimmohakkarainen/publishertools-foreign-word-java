@@ -28,7 +28,8 @@ class Phase02LlmChatCompletionCoordinatorTest {
 						ForeignWordsProperties.PROVIDER_OLLAMA,
 						null,
 						null,
-						new ForeignWordsProperties.Phase2(1, 16)));
+						new ForeignWordsProperties.Phase2(1, 16),
+						null));
 
 		coordinator.start();
 		try {
@@ -54,7 +55,8 @@ class Phase02LlmChatCompletionCoordinatorTest {
 						ForeignWordsProperties.PROVIDER_OLLAMA,
 						null,
 						null,
-						new ForeignWordsProperties.Phase2(1, 16)));
+						new ForeignWordsProperties.Phase2(1, 16),
+						null));
 
 		coordinator.start();
 		try {

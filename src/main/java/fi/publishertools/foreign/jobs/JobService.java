@@ -38,6 +38,8 @@ public class JobService {
 
 	public final BlockingQueue<String> words4Phase04JobIds = new LinkedBlockingQueue<>();
 
+	public final BlockingQueue<String> words4Phase05JobIds = new LinkedBlockingQueue<>();
+
 	public String submit(MultipartFile file) throws IOException {
 		if (file == null || file.isEmpty()) {
 			throw new IllegalArgumentException("File is required and must not be empty");

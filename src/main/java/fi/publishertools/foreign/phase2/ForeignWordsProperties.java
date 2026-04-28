@@ -15,7 +15,8 @@ public record ForeignWordsProperties(
 		String provider,
 		Ollama ollama,
 		MsFoundry msFoundry,
-		Phase2 phase2) {
+		Phase2 phase2,
+		Phase4 phase4) {
 
 	public static final String PROVIDER_OLLAMA = "ollama";
 	public static final String PROVIDER_MS_FOUNDRY = "ms-foundry";
@@ -32,6 +33,9 @@ public record ForeignWordsProperties(
 		}
 		if (phase2 == null) {
 			phase2 = new Phase2(null, null);
+		}
+		if (phase4 == null) {
+			phase4 = new Phase4(null, null, null);
 		}
 	}
 
@@ -76,6 +80,21 @@ public record ForeignWordsProperties(
 		public Phase2 {
 			if (llmWorkerCount == null || llmWorkerCount < 1) {
 				llmWorkerCount = 2;
+			}
+			if (llmQueueCapacity == null || llmQueueCapacity < 1) {
+				llmQueueCapacity = 256;
+			}
+		}
+	}
+
+	public record Phase4(
+			Integer llmWorkerCount,
+			Integer llmQueueCapacity,
+			String model) {
+
+		public Phase4 {
+			if (llmWorkerCount == null || llmWorkerCount < 1) {
+				llmWorkerCount = 1;
 			}
 			if (llmQueueCapacity == null || llmQueueCapacity < 1) {
 				llmQueueCapacity = 256;

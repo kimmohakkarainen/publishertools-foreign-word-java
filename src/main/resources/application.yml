@@ -16,13 +16,17 @@ foreign-words:
   phase2:
     llm-worker-count: 1
     llm-queue-capacity: 2000
+  phase4:
+    llm-worker-count: 1
+    llm-queue-capacity: 500
+    model: mistral-medium-2505
   ollama:
     base-url: http://localhost:11434
     model: gemma4:e4b
     request-timeout: 240s
   ms-foundry:
     endpoint: https://pt-ai-foundry.services.ai.azure.com/models
-    api-key: ${MS_FOUNDRY_API_KEY:}
+    api-key: ${MS_FOUNDRY_API_KEY}
     model: mistral-medium-2505
     request-timeout: 120s
 

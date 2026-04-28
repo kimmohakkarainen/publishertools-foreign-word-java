@@ -20,6 +20,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import fi.publishertools.foreign.jobs.phase01pagesplit.Phase01SplitWorker;
+import fi.publishertools.foreign.jobs.phase02foreignwords.Phase02ForeignWordsWorker;
+import fi.publishertools.foreign.jobs.phase03crosspage.Phase03CrossPageWorker;
+import fi.publishertools.foreign.jobs.phase04ipa.Phase04IpaWorker;
+
 @SpringBootTest(
 		classes = JobServiceWorkerTest.WorkerTestContext.class,
 		webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -45,13 +50,33 @@ class JobServiceWorkerTest {
 		}
 
 		@Bean
-		JobWorker jobWorker(JobService service, ObjectMapper objectMapper) {
-			return new JobWorker(service, objectMapper);
+		Phase01SplitWorker phase01SplitWorker(JobService service) {
+			return new Phase01SplitWorker(service);
+		}
+
+		@Bean
+		LegacyPostSplitWorker legacyPostSplitWorker(JobService service) {
+			return new LegacyPostSplitWorker(service);
+		}
+
+		@Bean
+		Phase02ForeignWordsWorker phase02ForeignWordsWorker(JobService service) {
+			return new Phase02ForeignWordsWorker(service);
+		}
+
+		@Bean
+		Phase03CrossPageWorker phase03CrossPageWorker(JobService service) {
+			return new Phase03CrossPageWorker(service);
+		}
+
+		@Bean
+		Phase04IpaWorker phase04IpaWorker(JobService service, ObjectMapper objectMapper) {
+			return new Phase04IpaWorker(service, objectMapper);
 		}
 	}
 
 	@Test
-	void submitEventuallyFinishesAfterTwoPhases() throws Exception {
+	void submitEventuallyFinishesAfterSplitAndLegacyPhase() throws Exception {
 		MockMultipartFile file = new MockMultipartFile("file", "sample.txt", "text/plain", "a\nb\nc".getBytes());
 		String id = jobService.submit(file);
 		assertThat(id).isNotBlank();
@@ -63,10 +88,11 @@ class JobServiceWorkerTest {
 	}
 
 	@Test
-	void submitPagesDirectlyEnqueuesToPhaseTwoAndFinishes() throws Exception {
+	void submitPagesDirectlyEnqueuesWords4PhasesAndFinishes() throws Exception {
+		// Single token per page so phase-2 picks are distinct and phase-3 does not merge rows.
 		String id = jobService.submitPages("job-words-1", "fi", List.of(
-				new PageText(1, "first page text"),
-				new PageText(2, "second page text")));
+				new PageText(1, "aaa"),
+				new PageText(2, "bbb")));
 		assertThat(id).isEqualTo("job-words-1");
 
 		Job finished = awaitFinishedJob(id);
@@ -74,10 +100,14 @@ class JobServiceWorkerTest {
 		assertThat(finished.getPages()).hasSize(2);
 		JsonNode root = objectMapper.readTree(finished.getResult());
 		assertThat(root.get("transcriptions").size()).isEqualTo(2);
-		assertThat(root.get("transcriptions").get(0).get("language").asText()).isEqualTo("fi");
-		assertThat(root.get("transcriptions").get(0).get("pages").toString()).isEqualTo("[1]");
-		assertThat(root.get("transcriptions").get(1).get("pages").toString()).isEqualTo("[2]");
-		assertThat(root.get("transcriptions").get(0).get("word").asText()).isEqualTo("first page text");
+		for (int i = 0; i < 2; i++) {
+			JsonNode t = root.get("transcriptions").get(i);
+			assertThat(t.get("language").asText()).isEqualTo("fi");
+			assertThat(t.get("word").asText()).isNotBlank();
+			assertThat(t.get("ipa").asText()).isEqualTo(t.get("word").asText());
+			assertThat(t.get("rawIpa").asText()).isEqualTo(t.get("word").asText());
+			assertThat(t.get("pages").isArray()).isTrue();
+		}
 	}
 
 	@Test
@@ -126,9 +156,9 @@ class JobServiceWorkerTest {
 	void processingErrorMarksJobAsError() throws Exception {
 		Job job = new Job("bad-job", "bad.txt", Instant.now(), null);
 		job.setStatus(JobStatus.IN_PROGRESS);
-		job.setPhase(JobPhase.QUEUED_FOR_SPLITTING);
+		job.setPhase(JobPhase.QUEUED_PHASE01_SPLIT);
 		jobService.jobs.put(job.getId(), job);
-		jobService.phaseOneJobIds.offer(job.getId());
+		jobService.phase01SplitJobIds.offer(job.getId());
 
 		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
 		while (System.nanoTime() < deadline) {

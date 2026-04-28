@@ -1,6 +1,9 @@
 spring:
   application:
     name: foreign-word-chat
+  http:
+    converters:
+      preferred-json-mapper: jackson2
   servlet:
     multipart:
       max-file-size: 10MB

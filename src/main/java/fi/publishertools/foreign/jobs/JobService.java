@@ -15,18 +15,26 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * In-memory job registry and queues for multi-phase processing.
+ * <p>
+ * To run multiple workers on one stage, start additional threads that call {@link java.util.concurrent.BlockingQueue#take()}
+ * on the same
+ * queue instance (same pattern as the single daemon worker per queue today).
  */
 @Service
 public class JobService {
 
-	/** For {@link JobWorker} only. */
-	final Map<String, Job> jobs = new ConcurrentHashMap<>();
+	/** Workers in phase packages poll job ids and resolve {@link #jobs}. */
+	public final Map<String, Job> jobs = new ConcurrentHashMap<>();
 
-	/** For {@link JobWorker} phase 1 only. */
-	final BlockingQueue<String> phaseOneJobIds = new LinkedBlockingQueue<>();
+	public final BlockingQueue<String> phase01SplitJobIds = new LinkedBlockingQueue<>();
 
-	/** For {@link JobWorker} phase 2 only. */
-	final BlockingQueue<String> phaseTwoJobIds = new LinkedBlockingQueue<>();
+	public final BlockingQueue<String> legacyPostSplitJobIds = new LinkedBlockingQueue<>();
+
+	public final BlockingQueue<String> words4Phase02JobIds = new LinkedBlockingQueue<>();
+
+	public final BlockingQueue<String> words4Phase03JobIds = new LinkedBlockingQueue<>();
+
+	public final BlockingQueue<String> words4Phase04JobIds = new LinkedBlockingQueue<>();
 
 	public String submit(MultipartFile file) throws IOException {
 		if (file == null || file.isEmpty()) {
@@ -44,10 +52,10 @@ public class JobService {
 		String name = file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload.txt";
 		Job job = new Job(id, name, Instant.now(), bytes);
 		job.setStatus(JobStatus.IN_PROGRESS);
-		job.setPhase(JobPhase.QUEUED_FOR_SPLITTING);
+		job.setPhase(JobPhase.QUEUED_PHASE01_SPLIT);
 		job.setDescription("defaultLanguage=en");
 		jobs.put(id, job);
-		phaseOneJobIds.offer(id);
+		phase01SplitJobIds.offer(id);
 		return id;
 	}
 
@@ -69,11 +77,11 @@ public class JobService {
 		String language = (defaultLanguage == null || defaultLanguage.isBlank()) ? "en" : defaultLanguage;
 		Job job = new Job(id, "words4-submit", Instant.now(), new byte[0]);
 		job.setStatus(JobStatus.IN_PROGRESS);
-		job.setPhase(JobPhase.QUEUED_FOR_PROCESSING);
+		job.setPhase(JobPhase.QUEUED_WORDS4_PHASE02);
 		job.setDescription("defaultLanguage=" + language);
 		job.setPages(pages);
 		jobs.put(id, job);
-		phaseTwoJobIds.offer(id);
+		words4Phase02JobIds.offer(id);
 		return id;
 	}
 

@@ -23,6 +23,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.publishertools.foreign.phase1.Phase01SplitWorker;
 import fi.publishertools.foreign.phase2.DetectedForeignWord;
 import fi.publishertools.foreign.phase2.ForeignWordDetectionClient;
+import fi.publishertools.foreign.phase2.ForeignWordsProperties;
+import fi.publishertools.foreign.phase2.Phase02LlmChatCompletionCoordinator;
 import fi.publishertools.foreign.phase2.Phase02ForeignWordsProcessor;
 import fi.publishertools.foreign.phase2.Phase02ForeignWordsWorker;
 import fi.publishertools.foreign.phase3.Phase03CrossPageWorker;
@@ -68,14 +70,34 @@ class JobServiceWorkerTest {
 				if (text == null || text.isBlank()) {
 					return List.of();
 				}
+				if (text.contains("always-fail")) {
+					throw new IllegalStateException("forced llm failure");
+				}
 				String firstToken = text.trim().split("\\s+")[0];
 				return List.of(new DetectedForeignWord(firstToken, "fi"));
 			};
 		}
 
 		@Bean
-		Phase02ForeignWordsProcessor phase02ForeignWordsProcessor(ForeignWordDetectionClient client) {
-			return new Phase02ForeignWordsProcessor(client);
+		ForeignWordsProperties foreignWordsProperties() {
+			return new ForeignWordsProperties(
+					ForeignWordsProperties.PROVIDER_OLLAMA,
+					null,
+					null,
+					new ForeignWordsProperties.Phase2(2, 32));
+		}
+
+		@Bean
+		Phase02LlmChatCompletionCoordinator phase02LlmChatCompletionCoordinator(
+				ForeignWordDetectionClient client,
+				ForeignWordsProperties properties) {
+			return new Phase02LlmChatCompletionCoordinator(client, properties);
+		}
+
+		@Bean
+		Phase02ForeignWordsProcessor phase02ForeignWordsProcessor(
+				Phase02LlmChatCompletionCoordinator coordinator) {
+			return new Phase02ForeignWordsProcessor(coordinator);
 		}
 
 		@Bean
@@ -128,6 +150,19 @@ class JobServiceWorkerTest {
 			assertThat(t.get("rawIpa").asText()).isEqualTo(t.get("word").asText());
 			assertThat(t.get("pages").isArray()).isTrue();
 		}
+	}
+
+	@Test
+	void submitPagesContinuesWhenOnePageFailsAllRetries() throws Exception {
+		String id = jobService.submitPages("job-words-retry-fallback", "fi", List.of(
+				new PageText(1, "always-fail page"),
+				new PageText(2, "works")));
+
+		Job finished = awaitFinishedJob(id);
+		assertThat(finished.getPhase()).isEqualTo(JobPhase.COMPLETED);
+		JsonNode root = objectMapper.readTree(finished.getResult());
+		assertThat(root.get("transcriptions").size()).isEqualTo(1);
+		assertThat(root.get("transcriptions").get(0).get("word").asText()).isEqualTo("works");
 	}
 
 	@Test

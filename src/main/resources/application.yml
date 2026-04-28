@@ -1,6 +1,6 @@
 spring:
   application:
-    name: foreign-word-chat
+    name: foreign-word-java
   http:
     converters:
       preferred-json-mapper: jackson2
@@ -13,10 +13,13 @@ server:
 
 foreign-words:
   provider: ms-foundry   # "ollama" or "ms-foundry"
+  phase2:
+    llm-worker-count: 1
+    llm-queue-capacity: 2000
   ollama:
     base-url: http://localhost:11434
-    model: mistral
-    request-timeout: 120s
+    model: gemma4:e4b
+    request-timeout: 240s
   ms-foundry:
     endpoint: https://pt-ai-foundry.services.ai.azure.com/models
     api-key: ${MS_FOUNDRY_API_KEY:}
@@ -26,4 +29,4 @@ foreign-words:
 logging:
   level:
     org:
-      springframework: DEBUG
+      springframework: INFO

@@ -14,7 +14,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record ForeignWordsProperties(
 		String provider,
 		Ollama ollama,
-		MsFoundry msFoundry) {
+		MsFoundry msFoundry,
+		Phase2 phase2) {
 
 	public static final String PROVIDER_OLLAMA = "ollama";
 	public static final String PROVIDER_MS_FOUNDRY = "ms-foundry";
@@ -28,6 +29,9 @@ public record ForeignWordsProperties(
 		}
 		if (msFoundry == null) {
 			msFoundry = new MsFoundry(null, null, null, null);
+		}
+		if (phase2 == null) {
+			phase2 = new Phase2(null, null);
 		}
 	}
 
@@ -61,6 +65,20 @@ public record ForeignWordsProperties(
 			}
 			if (requestTimeout == null) {
 				requestTimeout = Duration.ofSeconds(120);
+			}
+		}
+	}
+
+	public record Phase2(
+			Integer llmWorkerCount,
+			Integer llmQueueCapacity) {
+
+		public Phase2 {
+			if (llmWorkerCount == null || llmWorkerCount < 1) {
+				llmWorkerCount = 2;
+			}
+			if (llmQueueCapacity == null || llmQueueCapacity < 1) {
+				llmQueueCapacity = 256;
 			}
 		}
 	}

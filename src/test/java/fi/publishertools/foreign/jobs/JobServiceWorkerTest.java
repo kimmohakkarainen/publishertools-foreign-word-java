@@ -17,6 +17,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @SpringBootTest(
 		classes = JobServiceWorkerTest.WorkerTestContext.class,
 		webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -24,6 +27,9 @@ class JobServiceWorkerTest {
 
 	@Autowired
 	private JobService jobService;
+
+	@Autowired
+	private ObjectMapper objectMapper;
 
 	@Configuration
 	static class WorkerTestContext {
@@ -34,8 +40,13 @@ class JobServiceWorkerTest {
 		}
 
 		@Bean
-		JobWorker jobWorker(JobService service) {
-			return new JobWorker(service);
+		ObjectMapper objectMapper() {
+			return new ObjectMapper();
+		}
+
+		@Bean
+		JobWorker jobWorker(JobService service, ObjectMapper objectMapper) {
+			return new JobWorker(service, objectMapper);
 		}
 	}
 
@@ -61,8 +72,12 @@ class JobServiceWorkerTest {
 		Job finished = awaitFinishedJob(id);
 		assertThat(finished.getPhase()).isEqualTo(JobPhase.COMPLETED);
 		assertThat(finished.getPages()).hasSize(2);
-		assertThat(finished.getResult()).contains("Processed 2 pages");
-		assertThat(finished.getResult()).contains("Description: defaultLanguage=fi");
+		JsonNode root = objectMapper.readTree(finished.getResult());
+		assertThat(root.get("transcriptions").size()).isEqualTo(2);
+		assertThat(root.get("transcriptions").get(0).get("language").asText()).isEqualTo("fi");
+		assertThat(root.get("transcriptions").get(0).get("pages").toString()).isEqualTo("[1]");
+		assertThat(root.get("transcriptions").get(1).get("pages").toString()).isEqualTo("[2]");
+		assertThat(root.get("transcriptions").get(0).get("word").asText()).isEqualTo("first page text");
 	}
 
 	@Test

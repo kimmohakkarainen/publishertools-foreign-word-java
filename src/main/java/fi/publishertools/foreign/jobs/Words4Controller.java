@@ -13,7 +13,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import fi.publishertools.foreign.jobs.dto.JobSubmissionResponse;
+import fi.publishertools.foreign.jobs.dto.Words4FinishedPayload;
+import fi.publishertools.foreign.jobs.dto.Words4ResourceResponse;
+import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
 import fi.publishertools.foreign.jobs.dto.WordsSubmitRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,10 +28,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 public class Words4Controller {
 
-	private final JobService jobService;
+	private static final String WORDS4_JOB_NAME = "words4-submit";
 
-	public Words4Controller(JobService jobService) {
+	private final JobService jobService;
+	private final ObjectMapper objectMapper;
+
+	public Words4Controller(JobService jobService, ObjectMapper objectMapper) {
 		this.jobService = jobService;
+		this.objectMapper = objectMapper;
 	}
 
 	@Operation(summary = "Submit pre-split pages directly to phase-2 processing")
@@ -65,14 +75,29 @@ public class Words4Controller {
 		return ResponseEntity.ok(status);
 	}
 
-	@Operation(summary = "Get words4 finished job resource")
-	@GetMapping(path = "/words4/{id}/resource", produces = MediaType.TEXT_PLAIN_VALUE)
-	public ResponseEntity<String> resource(@PathVariable String id) {
+	@Operation(summary = "Get words4 job resource (status or transcriptions JSON)")
+	@GetMapping(path = "/words4/{id}/resource", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Words4ResourceResponse> resource(@PathVariable String id) {
 		Job job = jobService.find(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found"));
+		if (!WORDS4_JOB_NAME.equals(job.getOriginalFilename())) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found");
+		}
 		return switch (job.getStatus()) {
-			case FINISHED -> ResponseEntity.ok(job.getResult() != null ? job.getResult() : "");
-			case IN_PROGRESS, ERROR -> ResponseEntity.status(HttpStatus.CONFLICT).body("Job is not finished");
+			case IN_PROGRESS -> ResponseEntity.ok(Words4ResourceResponse.inProgress());
+			case ERROR -> ResponseEntity.ok(Words4ResourceResponse.failed());
+			case FINISHED -> ResponseEntity.ok(Words4ResourceResponse.finished(parseFinishedTranscriptions(job.getResult())));
 		};
+	}
+
+	private List<Words4TranscriptionItem> parseFinishedTranscriptions(String result) {
+		if (result == null || result.isBlank()) {
+			return List.of();
+		}
+		try {
+			return objectMapper.readValue(result, Words4FinishedPayload.class).transcriptions();
+		} catch (JsonProcessingException e) {
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid job result", e);
+		}
 	}
 }

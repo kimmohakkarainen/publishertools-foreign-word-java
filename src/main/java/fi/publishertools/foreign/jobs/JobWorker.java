@@ -8,6 +8,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import fi.publishertools.foreign.jobs.dto.Words4FinishedPayload;
+import fi.publishertools.foreign.jobs.dto.Words4TranscriptionItem;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
@@ -18,12 +24,14 @@ import jakarta.annotation.PreDestroy;
 public class JobWorker {
 
 	private final JobService jobService;
+	private final ObjectMapper objectMapper;
 	private final AtomicBoolean running = new AtomicBoolean(true);
 	private Thread splitWorkerThread;
 	private Thread processWorkerThread;
 
-	public JobWorker(JobService jobService) {
+	public JobWorker(JobService jobService, ObjectMapper objectMapper) {
 		this.jobService = jobService;
+		this.objectMapper = objectMapper;
 	}
 
 	@PostConstruct
@@ -153,6 +161,9 @@ public class JobWorker {
 		List<PageText> pages = job.getPages().stream()
 				.sorted(Comparator.comparingInt(PageText::page))
 				.toList();
+		if ("words4-submit".equals(job.getOriginalFilename())) {
+			return processWords4(pages, job);
+		}
 		int pageCount = pages.size();
 		int totalWords = pages.stream().map(PageText::text).mapToInt(this::countWords).sum();
 		String preview = pageCount > 0
@@ -163,6 +174,29 @@ public class JobWorker {
 				: " Description: " + job.getDescription();
 		return "Processed " + pageCount + " pages and " + totalWords + " words from "
 				+ job.getOriginalFilename() + ". First page preview: " + preview + descriptionSuffix;
+	}
+
+	private String processWords4(List<PageText> pages, Job job) {
+		String language = parseDefaultLanguage(job);
+		List<Words4TranscriptionItem> transcriptions = pages.stream()
+				.map(p -> {
+					String text = p.text();
+					return new Words4TranscriptionItem(List.of(), text, language, List.of(p.page()), text, text);
+				})
+				.toList();
+		try {
+			return objectMapper.writeValueAsString(new Words4FinishedPayload(transcriptions));
+		} catch (JsonProcessingException e) {
+			throw new IllegalStateException("Failed to serialize words4 result", e);
+		}
+	}
+
+	private static String parseDefaultLanguage(Job job) {
+		String d = job.getDescription();
+		if (d == null || !d.startsWith("defaultLanguage=")) {
+			return "en";
+		}
+		return d.substring("defaultLanguage=".length());
 	}
 
 	private int countWords(String text) {

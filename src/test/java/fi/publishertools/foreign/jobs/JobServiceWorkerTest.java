@@ -30,8 +30,10 @@ import fi.publishertools.foreign.phase2.Phase02ForeignWordsWorker;
 import fi.publishertools.foreign.phase3.Phase03CrossPageWorker;
 import fi.publishertools.foreign.phase4.InflectionMergeClient;
 import fi.publishertools.foreign.phase4.MergedInflectionWord;
+import fi.publishertools.foreign.phase4.Phase04InflectionMergeDispatcher;
 import fi.publishertools.foreign.phase4.Phase04InflectionMergeProcessor;
 import fi.publishertools.foreign.phase4.Phase04InflectionMergeWorker;
+import fi.publishertools.foreign.phase4.Phase04LlmInflectionMergeCoordinator;
 import fi.publishertools.foreign.phase5.Phase05IpaWorker;
 
 @SpringBootTest(
@@ -131,8 +133,15 @@ class JobServiceWorkerTest {
 		}
 
 		@Bean
-		Phase04InflectionMergeProcessor phase04InflectionMergeProcessor(InflectionMergeClient client) {
-			return new Phase04InflectionMergeProcessor(client);
+		Phase04LlmInflectionMergeCoordinator phase04LlmInflectionMergeCoordinator(
+				InflectionMergeClient client,
+				ForeignWordsProperties properties) {
+			return new Phase04LlmInflectionMergeCoordinator(client, properties);
+		}
+
+		@Bean
+		Phase04InflectionMergeProcessor phase04InflectionMergeProcessor(Phase04InflectionMergeDispatcher dispatcher) {
+			return new Phase04InflectionMergeProcessor(dispatcher);
 		}
 
 		@Bean

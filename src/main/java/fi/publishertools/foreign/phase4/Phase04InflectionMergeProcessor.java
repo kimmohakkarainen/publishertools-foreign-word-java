@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,10 +23,10 @@ import fi.publishertools.foreign.jobs.dto.Words4PhaseItem;
 public class Phase04InflectionMergeProcessor {
 
 	private static final Logger log = LoggerFactory.getLogger(Phase04InflectionMergeProcessor.class);
-	private final InflectionMergeClient client;
+	private final Phase04InflectionMergeDispatcher dispatcher;
 
-	public Phase04InflectionMergeProcessor(InflectionMergeClient client) {
-		this.client = client;
+	public Phase04InflectionMergeProcessor(Phase04InflectionMergeDispatcher dispatcher) {
+		this.dispatcher = dispatcher;
 	}
 
 	public List<Words4PhaseItem> mergeInflections(List<Words4PhaseItem> items) {
@@ -42,43 +43,61 @@ public class Phase04InflectionMergeProcessor {
 			buckets.computeIfAbsent(key, ignored -> new ArrayList<>()).add(item);
 		}
 
-		List<Words4PhaseItem> result = new ArrayList<>();
+		record BucketMergeWork(
+				List<Words4PhaseItem> originalBucket,
+				List<Words4PhaseItem> immediateResult,
+				CompletableFuture<List<MergedInflectionWord>> future) {
+		}
+
+		List<BucketMergeWork> bucketWork = new ArrayList<>();
 		for (List<Words4PhaseItem> bucketItems : buckets.values()) {
 			if (bucketItems.size() <= 1) {
-				result.addAll(bucketItems);
+				bucketWork.add(new BucketMergeWork(bucketItems, bucketItems, null));
 				continue;
 			}
-			List<Words4PhaseItem> mergedBucket = tryMergeBucket(bucketItems);
+			List<String> words = bucketItems.stream()
+					.map(Words4PhaseItem::word)
+					.distinct()
+					.toList();
+			if (words.size() <= 1) {
+				bucketWork.add(new BucketMergeWork(bucketItems, bucketItems, null));
+				continue;
+			}
+			CompletableFuture<List<MergedInflectionWord>> future = dispatcher.submit(words);
+			bucketWork.add(new BucketMergeWork(bucketItems, null, future));
+		}
+		List<Words4PhaseItem> result = new ArrayList<>();
+		for (BucketMergeWork bucket : bucketWork) {
+			if (bucket.immediateResult() != null) {
+				result.addAll(bucket.immediateResult());
+				continue;
+			}
+			List<Words4PhaseItem> mergedBucket = tryMergeBucket(bucket.originalBucket(), bucket.future());
 			result.addAll(mergedBucket);
 		}
 		return result;
 	}
 
-	private List<Words4PhaseItem> tryMergeBucket(List<Words4PhaseItem> bucketItems) {
-		List<String> words = bucketItems.stream()
-				.map(Words4PhaseItem::word)
-				.distinct()
-				.toList();
-		if (words.size() <= 1) {
-			return bucketItems;
-		}
+	private List<Words4PhaseItem> tryMergeBucket(
+			List<Words4PhaseItem> bucketItems,
+			CompletableFuture<List<MergedInflectionWord>> mergedFuture) {
 		List<MergedInflectionWord> merged;
 		String threadName = Thread.currentThread().getName();
 		long startedAt = System.nanoTime();
 		log.info(
 				"Inflection LLM call started thread={} bucketWordCount={} attempt={}/{}",
 				threadName,
-				words.size(),
+				bucketItems.size(),
 				1,
 				1);
 		try {
-			merged = client.detectInflections(words);
+			merged = mergedFuture.join();
 			long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
 			int resultCount = merged == null ? 0 : merged.size();
 			log.info(
 					"Inflection LLM call finished thread={} bucketWordCount={} resultCount={} elapsedMs={} attempt={}/{}",
 					threadName,
-					words.size(),
+					bucketItems.size(),
 					resultCount,
 					elapsedMs,
 					1,
@@ -88,7 +107,7 @@ public class Phase04InflectionMergeProcessor {
 			log.info(
 					"Inflection LLM call failed; using unmerged bucket thread={} bucketWordCount={} elapsedMs={} attempt={}/{} error={}",
 					threadName,
-					words.size(),
+					bucketItems.size(),
 					elapsedMs,
 					1,
 					1,

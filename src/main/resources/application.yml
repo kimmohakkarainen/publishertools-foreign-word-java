@@ -14,10 +14,10 @@ server:
 foreign-words:
   provider: ms-foundry   # "ollama" or "ms-foundry"
   phase2:
-    llm-worker-count: 1
+    llm-worker-count: 20
     llm-queue-capacity: 2000
   phase4:
-    llm-worker-count: 1
+    llm-worker-count: 20
     llm-queue-capacity: 500
     model: mistral-medium-2505
   ollama:

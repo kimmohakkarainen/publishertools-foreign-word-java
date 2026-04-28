@@ -21,12 +21,13 @@ import jakarta.annotation.PreDestroy;
 public class Phase02ForeignWordsWorker {
 
 	private final JobService jobService;
-	private final Phase02ForeignWordsProcessor processor = new Phase02ForeignWordsProcessor();
+	private final Phase02ForeignWordsProcessor processor;
 	private final AtomicBoolean running = new AtomicBoolean(true);
 	private Thread workerThread;
 
-	public Phase02ForeignWordsWorker(JobService jobService) {
+	public Phase02ForeignWordsWorker(JobService jobService, Phase02ForeignWordsProcessor processor) {
 		this.jobService = jobService;
+		this.processor = processor;
 	}
 
 	@PostConstruct

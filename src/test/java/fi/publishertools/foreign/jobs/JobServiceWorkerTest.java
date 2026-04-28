@@ -21,6 +21,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import fi.publishertools.foreign.jobs.phase01pagesplit.Phase01SplitWorker;
+import fi.publishertools.foreign.jobs.phase02foreignwords.DetectedForeignWord;
+import fi.publishertools.foreign.jobs.phase02foreignwords.ForeignWordDetectionClient;
+import fi.publishertools.foreign.jobs.phase02foreignwords.Phase02ForeignWordsProcessor;
 import fi.publishertools.foreign.jobs.phase02foreignwords.Phase02ForeignWordsWorker;
 import fi.publishertools.foreign.jobs.phase03crosspage.Phase03CrossPageWorker;
 import fi.publishertools.foreign.jobs.phase04ipa.Phase04IpaWorker;
@@ -60,8 +63,25 @@ class JobServiceWorkerTest {
 		}
 
 		@Bean
-		Phase02ForeignWordsWorker phase02ForeignWordsWorker(JobService service) {
-			return new Phase02ForeignWordsWorker(service);
+		ForeignWordDetectionClient foreignWordDetectionClient() {
+			return text -> {
+				if (text == null || text.isBlank()) {
+					return List.of();
+				}
+				String firstToken = text.trim().split("\\s+")[0];
+				return List.of(new DetectedForeignWord(firstToken, "fi"));
+			};
+		}
+
+		@Bean
+		Phase02ForeignWordsProcessor phase02ForeignWordsProcessor(ForeignWordDetectionClient client) {
+			return new Phase02ForeignWordsProcessor(client);
+		}
+
+		@Bean
+		Phase02ForeignWordsWorker phase02ForeignWordsWorker(JobService service,
+				Phase02ForeignWordsProcessor processor) {
+			return new Phase02ForeignWordsWorker(service, processor);
 		}
 
 		@Bean
